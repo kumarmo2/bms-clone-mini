@@ -1,0 +1,3 @@
+[submodule "CommonLibs"]
+	path = CommonLibs
+	url = git@github.com:kumarmo2/CommonLibs.git
