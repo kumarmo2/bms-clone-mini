@@ -6,6 +6,9 @@ using BMS.DataAccess.Cinema;
 using BMS.Business.Cinema;
 using BMS.DataAccess.Booking;
 using BMS.Business.Booking;
+using BMS.Business.User;
+using BMS.DataAccess.User;
+using BMS.Utils.User;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -29,7 +32,10 @@ services.AddSingleton<IAuditoriumRepository, AuditoriumRepository>();
 services.AddSingleton<ICinemaLogic, CinemaLogic>();
 services.AddSingleton<IShowRepository, ShowRepository>();
 services.AddSingleton<IShowLogic, ShowLogic>();
-
+services.AddSingleton<IUserLogic, UserLogic>();
+services.AddSingleton<IUserRepository, UserRepository>();
+services.AddSingleton<IUserUtils, UserUtils>();
+services.AddUserSecrets(config);
 
 
 var app = builder.Build();

@@ -1,12 +1,11 @@
-namespace BMS.Models.User;
+namespace BMS.Dtos.User;
 
-public class User
+
+public class UserDto
 {
-
     public long Id { get; set; }
     public string FirstName { get; set; }
     public string LastName { get; set; }
     public string Email { get; set; }
-    public string HashedPass { get; set; }
 }
 

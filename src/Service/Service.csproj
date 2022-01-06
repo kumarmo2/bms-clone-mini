@@ -14,8 +14,9 @@
   <ItemGroup>
     <ProjectReference Include="..\Dtos\Dtos.csproj" />
     <ProjectReference Include="..\Business\Business.csproj" />
-    <ProjectReference Include="..\..\CommonLibs\src\Utils\Utils.csproj" />
     <ProjectReference Include="..\..\CommonLibs\src\Database\Database.csproj" />
+    <ProjectReference Include="..\Utils\BMSUtils.csproj" />
+    <ProjectReference Include="..\..\CommonLibs\src\Utils\Utils.csproj" />
   </ItemGroup>
 
 </Project>
