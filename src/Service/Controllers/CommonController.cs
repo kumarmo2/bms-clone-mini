@@ -6,6 +6,12 @@ namespace BMS.Services.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class CommonController : ControllerBase { }
+public class CommonController : ControllerBase
+{
+    protected ActionResult InternalServerError()
+    {
+        return StatusCode(500);
+    }
+}
 
 

@@ -36,9 +36,34 @@ public class UserLogic : IUserLogic
         return new OneOf<um.User, string>(user);
     }
 
+    public async Task<OneOf<um.User, string>> LoginUser(LoginRequest request)
+    {
+        if (request is null)
+        {
+            throw new ArgumentNullException($"{nameof(request)}");
+        }
+
+        var user = await _userRepository.GetByEmail(request.Email);
+        if (user is null || user.Id < 1)
+        {
+            return new OneOf<um.User, string>("Email not found");
+        }
+
+        if (!BCrypt.Net.BCrypt.Verify(request.Password, user.HashedPass))
+        {
+            return new OneOf<um.User, string>("Email or Pass don't match");
+        }
+        return new OneOf<um.User, string>(user);
+    }
+
+    private static string GetHashedPass(string pass)
+    {
+        return BCrypt.Net.BCrypt.HashPassword(pass, 11);
+    }
+
     private um.User GetUser(CreateUserRequest request)
     {
-        var hashedPass = BCrypt.Net.BCrypt.HashPassword(request.Password, 11);
+        var hashedPass = GetHashedPass(request.Password);
         return new um.User
         {
             Id = _idFactory.Next(),

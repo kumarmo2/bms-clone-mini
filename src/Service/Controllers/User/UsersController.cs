@@ -6,7 +6,6 @@ using cu = CommonLibs.Utils;
 using BMS.Utils;
 using um = BMS.Models.User;
 
-// using BMS.Utils.User;
 
 namespace BMS.Services.Controllers.User;
 
@@ -20,6 +19,58 @@ public class UsersController : CommonController
     {
         _userLogic = userLogic;
         _userUtils = userUtils;
+    }
+
+
+    [HttpPost("login")]
+    public async Task<ActionResult<cu.OneOf<UserDto, string>>> Login(LoginRequest request)
+    {
+        if (request is null)
+        {
+            return BadRequest(new cu.OneOf<UserDto, string>("Must pass body"));
+        }
+
+        var validationMessage = ValidateLoginRequest(request);
+        if (validationMessage is not null)
+        {
+            return new cu.OneOf<UserDto, string>(validationMessage);
+        }
+
+        var result = await _userLogic.LoginUser(request);
+
+        if (result is null)
+        {
+            return InternalServerError();
+        }
+        if (!string.IsNullOrWhiteSpace(result.Err))
+        {
+            return new cu.OneOf<UserDto, string>(result.Err);
+        }
+
+        if (result.Ok is null)
+        {
+            return InternalServerError();
+        }
+        var user = result.Ok;
+        AddAuthCookie(user.Id);
+        return new cu.OneOf<UserDto, string>(GetUserDto(user));
+    }
+
+    private static string ValidateLoginRequest(LoginRequest request)
+    {
+        var (email, password) = request;
+        if (string.IsNullOrWhiteSpace(password))
+        {
+            return "Password cannot be empty";
+        }
+        try
+        {
+            return ValidateEmail(email);
+        }
+        catch
+        {
+            return "Invalid Email Address";
+        }
     }
 
 
@@ -37,8 +88,7 @@ public class UsersController : CommonController
             return BadRequest(new cu.OneOf<UserDto, string>(validationMessage));
         }
         var result = await _userLogic.CreateUser(request);
-        Console.WriteLine($"result is null: {result is null}");
-        Console.WriteLine($"result.Ok is null: {result.Ok is null}");
+
         if (result is null)
         {
             return StatusCode(500);
@@ -77,7 +127,6 @@ public class UsersController : CommonController
         Console.WriteLine($"token: {token}");
         var cookies = Response.Cookies;
         var cookieBuilder = new CookieBuilder();
-        // cookieBuilder.Name = Constants.UserAuthCookieKey;
         cookieBuilder.Path = "/";
         cookieBuilder.Expiration = TimeSpan.FromDays(30);
         cookieBuilder.SameSite = SameSiteMode.Lax;
@@ -108,21 +157,26 @@ public class UsersController : CommonController
             return "Password cannot be empty";
         }
 
-        var trimmed = email.Trim();
         try
         {
-            var addr = new System.Net.Mail.MailAddress(request.Email);
-            var isValidEmail = addr.Address == trimmed;
-            if (!isValidEmail)
-            {
-                return "Invalid Email Address";
-            }
+            return ValidateEmail(email);
         }
         catch
         {
             return "Invalid Email Address";
         }
 
+        return null;
+    }
+    private static string ValidateEmail(string email)
+    {
+        var trimmed = email.Trim();
+        var addr = new System.Net.Mail.MailAddress(email);
+        var isValidEmail = addr.Address == trimmed;
+        if (!isValidEmail)
+        {
+            return "Invalid Email Address";
+        }
         return null;
     }
 }
