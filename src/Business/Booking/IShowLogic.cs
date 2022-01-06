@@ -7,4 +7,5 @@ namespace BMS.Business.Booking;
 public interface IShowLogic
 {
     Task<OneOf<bool, string>> CreateShow(CreateShowRequest request);
+    Task<OneOf<ShowInfo, string>> GetShowInfo(long showId);
 }
