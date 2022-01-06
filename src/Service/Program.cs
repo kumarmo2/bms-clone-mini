@@ -9,7 +9,7 @@ using BMS.Business.Booking;
 using BMS.Business.User;
 using BMS.DataAccess.User;
 using BMS.Utils.User;
-
+using BMS.Services.Filters;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -35,6 +35,7 @@ services.AddSingleton<IShowLogic, ShowLogic>();
 services.AddSingleton<IUserLogic, UserLogic>();
 services.AddSingleton<IUserRepository, UserRepository>();
 services.AddSingleton<IUserUtils, UserUtils>();
+services.AddSingleton<AuthFilter>();
 services.AddUserSecrets(config);
 
 

@@ -1,5 +1,6 @@
 using BMS.Business.Booking;
 using BMS.Dtos.Booking;
+using BMS.Services.Filters;
 using CommonLibs.Utils;
 using Microsoft.AspNetCore.Mvc;
 
@@ -57,5 +58,13 @@ public class ShowsController : CommonController
         }
         return await _showLogic.GetShowInfo(showId);
     }
+
+    [HttpPost("booking")]
+    [ServiceFilter(typeof(AuthFilter))]
+    public IActionResult BookShow()
+    {
+        return Ok();
+    }
+
 }
 
