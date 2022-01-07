@@ -1,6 +1,8 @@
 using BMS.Business.Booking;
 using BMS.Dtos.Booking;
 using BMS.Services.Filters;
+using BMS.Utils;
+using BMS.Utils.User;
 using CommonLibs.Utils;
 using Microsoft.AspNetCore.Mvc;
 
@@ -61,9 +63,10 @@ public class ShowsController : CommonController
 
     [HttpPost("booking")]
     [ServiceFilter(typeof(AuthFilter))]
-    public IActionResult BookShow()
+    public async Task<ActionResult<OneOf<bool, string>>> BookShow(BookShowRequest request)
     {
-        return Ok();
+        var authDto = (UserAuthDto)Request.HttpContext.Items[Constants.AuthDtoKey];
+        return await _showLogic.BookMyShow(request, authDto.UserId);
     }
 
 }

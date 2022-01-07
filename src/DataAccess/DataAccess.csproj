@@ -4,6 +4,7 @@
     <ProjectReference Include="..\Models\Models.csproj" />
     <ProjectReference Include="..\Dtos\Dtos.csproj" />
     <ProjectReference Include="..\..\CommonLibs\src\Database\Database.csproj" />
+    <ProjectReference Include="..\..\CommonLibs\src\Utils\Utils.csproj" />
   </ItemGroup>
 
   <ItemGroup>

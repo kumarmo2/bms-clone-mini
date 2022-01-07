@@ -1,6 +1,8 @@
 using BMS.Models.Booking;
 using CommonLibs.Database;
 using Dapper;
+using CommonLibs.Utils;
+using BMS.Dtos.Booking;
 
 namespace BMS.DataAccess.Booking;
 
@@ -70,6 +72,45 @@ public class ShowRepository : IShowRepository
         using (var conn = _dbConnectionFactory.GetDbConnection())
         {
             return await conn.QueryFirstOrDefaultAsync<Show>(query, new { id = id });
+        }
+    }
+
+    private static string GenerateConditionForSelectingSeats(IEnumerable<Seat> seats)
+    {
+        var conditions = seats.Select(seat => $"(rowindex = {seat.RowIndex} and colindex = {seat.ColIndex})").ToList();
+        var orJoinedConditions = string.Join(" or ", conditions);
+        return orJoinedConditions;
+    }
+
+    public async Task<OneOf<bool, string>> BookMyShow(BookShowRequest request, long userId)
+    {
+        var showId = request.ShowId;
+        var condtionsForSelectingSeats = GenerateConditionForSelectingSeats(request.Seats);
+        var selectQuery = $@"select * from booking.showseatavailabilities
+                            where
+                                showid = @showid
+                                and isbooked = false
+                                and ({condtionsForSelectingSeats});";
+        Console.WriteLine($"selectQuery: {selectQuery}");
+        var updateQuery = $@"update booking.showseatavailabilities
+                            set isbooked = true
+                            where showid = @showid
+                            and ({condtionsForSelectingSeats});";
+        using (var conn = _dbConnectionFactory.GetDbConnection())
+        {
+            conn.Open();
+            using (var transaction = conn.BeginTransaction())
+            {
+                var seatAvailibilities = await conn.QueryAsync<ShowSeatAvailablity>(selectQuery, new { showid = request.ShowId }, transaction: transaction);
+                if (seatAvailibilities is null || seatAvailibilities.Count() < request.Seats.Count)
+                {
+                    transaction.Commit();
+                    return new OneOf<bool, string>("Some of the seats are already booked. Try again!");
+                }
+                await conn.ExecuteAsync(updateQuery, new { showid = request.ShowId }, transaction);
+                transaction.Commit();
+                return new OneOf<bool, string>(true);
+            }
         }
     }
 

@@ -67,10 +67,23 @@ public class ShowLogic : IShowLogic
         return new OneOf<ShowInfo, string>(showInfo);
     }
 
+    public async Task<OneOf<bool, string>> BookMyShow(BookShowRequest request, long userId)
+    {
+        if (request is null)
+        {
+            throw new ArgumentNullException(nameof(request));
+        }
+        // TODO: add validations like, num of seats booked cannot be more than 10.
+
+        return await _showRepository.BookMyShow(request, userId);
+        // get show seat availablities and check the requested 
+    }
+
     private static string GetSeatAvaibilityKey(ShowSeatAvailablity seatAvailablity)
     {
         return $"{GetSeatAvaibilityKey(seatAvailablity.RowIndex, seatAvailablity.ColIndex)}";
     }
+
     private static string GetSeatAvaibilityKey(int rowIndex, int colIndex)
     {
         return $"row:{rowIndex}|col:{colIndex}";
