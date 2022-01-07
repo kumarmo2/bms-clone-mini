@@ -75,6 +75,16 @@ public class ShowRepository : IShowRepository
         }
     }
 
+    public async Task<IEnumerable<Show>> GetAvailableShows(long movieId, DateTime minEndTime)
+    {
+        var query = "select * from booking.shows where movieid = @movieid and endtime > @minendtime;";
+
+        using (var conn = _dbConnectionFactory.GetDbConnection())
+        {
+            return await conn.QueryAsync<Show>(query, new { movieid = movieId, minendtime = minEndTime });
+        }
+    }
+
     private static string GenerateConditionForSelectingSeats(IEnumerable<Seat> seats)
     {
         var conditions = seats.Select(seat => $"(rowindex = {seat.RowIndex} and colindex = {seat.ColIndex})").ToList();

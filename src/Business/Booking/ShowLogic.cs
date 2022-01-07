@@ -4,6 +4,7 @@ using BMS.DataAccess.Booking;
 using BMS.Dtos.Booking;
 using BMS.Models.Booking;
 using BMS.Models.Cinema;
+using cdto = BMS.Dtos.Cinema;
 using CommonLibs.Utils;
 using CommonLibs.Utils.Id;
 
@@ -23,6 +24,78 @@ public class ShowLogic : IShowLogic
         _idFactory = idFactory;
         _movieLogic = movieLogic;
         _showRepository = showRepository;
+    }
+
+    public async Task<OneOf<MovieShows, string>> GetMovieShows(long movieId)
+    {
+        if (movieId < 1)
+        {
+            throw new ArgumentException($"Invalid {movieId}");
+        }
+
+        var showsTask = _showRepository.GetAvailableShows(movieId, DateTime.UtcNow);
+        var movieTask = _movieLogic.GetMovie(movieId);
+
+        await Task.WhenAll(showsTask, movieTask);
+        var movie = movieTask.Result;
+
+        if (movie is null || movie.Id != movieId)
+        {
+            return new OneOf<MovieShows, string>("No Movie Found");
+        }
+
+        var shows = showsTask.Result;
+
+        if (shows is null || !shows.Any())
+        {
+            return new OneOf<MovieShows, string>(new MovieShows());
+        }
+
+        var audiIds = shows.Select(show => show.AudiId);
+        var audiCinemas = await _cinemaLogic.GetCinemasForAudis(audiIds);
+
+        if (audiCinemas is null || !audiCinemas.Any())
+        {
+            // Ideally this should never happen.
+            throw new Exception("Internal Server Error. Please Try Again");
+        }
+
+        // cinemas could have duplicate cinemas as multiple audis can belong to
+        // same cinema.
+
+        var audiIdToCinemaMap = new Dictionary<int, cdto.AudiCinema>();
+
+        foreach (var audiCinema in audiCinemas)
+        {
+            if (audiIdToCinemaMap.ContainsKey(audiCinema.AudiId))
+            {
+                continue;
+            }
+            audiIdToCinemaMap[audiCinema.AudiId] = audiCinema;
+        }
+
+        var showOverviews = shows.Select(show =>
+        {
+            audiIdToCinemaMap.TryGetValue(show.AudiId, out var audiCinema);
+            return new MovieShowOverview
+            {
+                MovieId = movieId,
+                CinemaName = audiCinema?.CinemaName,
+                CinemaId = audiCinema is not null ? audiCinema.CinemaId : 0,
+                ShowId = show.Id,
+                StartTime = show.StartTime,
+                EndTime = show.EndTime,
+            };
+        });
+
+        var movieShows = new MovieShows
+        {
+            MovieId = movieId,
+            MovieName = movie.Name,
+            Shows = showOverviews
+        };
+
+        return new OneOf<MovieShows, string>(movieShows);
     }
 
     public async Task<OneOf<ShowInfo, string>> GetShowInfo(long showId)

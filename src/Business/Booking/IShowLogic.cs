@@ -9,4 +9,5 @@ public interface IShowLogic
     Task<OneOf<bool, string>> CreateShow(CreateShowRequest request);
     Task<OneOf<ShowInfo, string>> GetShowInfo(long showId);
     Task<OneOf<bool, string>> BookMyShow(BookShowRequest request, long userId);
+    Task<OneOf<MovieShows, string>> GetMovieShows(long movieId);
 }

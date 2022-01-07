@@ -18,6 +18,16 @@ public class ShowsController : CommonController
         _showLogic = showLogic;
     }
 
+    [HttpGet("{movieId}")]
+    public async Task<ActionResult<OneOf<MovieShows, string>>> GetShows(long movieId)
+    {
+        if (movieId < 0)
+        {
+            return BadRequest(new OneOf<MovieShows, string>("Invalid Movied"));
+        }
+        return await _showLogic.GetMovieShows(movieId);
+    }
+
     [HttpPost]
     public async Task<ActionResult<OneOf<bool, string>>> CreateShow(CreateShowRequest request)
     {

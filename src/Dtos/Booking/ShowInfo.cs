@@ -8,6 +8,8 @@ public class ShowInfo
     public int AudiId { get; set; }
     public string AudiName { get; set; }
     public string CinemaName { get; set; }
+    public DateTime StartTime { get; set; }
+    public DateTime EndTime { get; set; }
     public List<List<int>> SeatAvailablityLayout { get; set; }
 }
 

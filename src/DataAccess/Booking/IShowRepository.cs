@@ -12,5 +12,6 @@ public interface IShowRepository
     Task<IEnumerable<ShowSeatAvailablity>> GetShowSeatAvailablities(long showId);
     Task<Show> GetShowForAudiBetweenTime(int audiId, DateTime startTime, DateTime endTime);
     Task<OneOf<bool, string>> BookMyShow(BookShowRequest request, long userId);
+    Task<IEnumerable<Show>> GetAvailableShows(long movieId, DateTime minEndTime);
 }
 
