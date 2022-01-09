@@ -207,7 +207,7 @@ public class ShowLogic : IShowLogic
         var movieTask = _movieLogic.GetMovie(show.MovieId);
         var cinemaTask = _cinemaLogic.GetCinemaForAudi(show.AudiId);
 
-        await Task.WhenAll(seatAvailabilitiesTask, auditoriumTask, movieTask);
+        await Task.WhenAll(seatAvailabilitiesTask, auditoriumTask, movieTask, cinemaTask);
 
         var seatAvailabilities = seatAvailabilitiesTask.Result;
         var audi = auditoriumTask.Result;
