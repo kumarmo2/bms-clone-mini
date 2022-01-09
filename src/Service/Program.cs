@@ -10,6 +10,9 @@ using BMS.Business.User;
 using BMS.DataAccess.User;
 using BMS.Utils.User;
 using BMS.Services.Filters;
+using BMS.DataAccess.Location;
+using BMS.Business.Location;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -30,12 +33,15 @@ services.AddSingleton<IMovieLogic, MovieLogic>();
 services.AddSingleton<IMovieRepository, MovieRepository>();
 services.AddSingleton<IAuditoriumRepository, AuditoriumRepository>();
 services.AddSingleton<ICinemaLogic, CinemaLogic>();
+services.AddSingleton<ICinemaRepository, CinemaRepository>();
 services.AddSingleton<IShowRepository, ShowRepository>();
 services.AddSingleton<IShowLogic, ShowLogic>();
 services.AddSingleton<IUserLogic, UserLogic>();
 services.AddSingleton<IUserRepository, UserRepository>();
 services.AddSingleton<IUserUtils, UserUtils>();
 services.AddSingleton<AuthFilter>();
+services.AddSingleton<ICityRepository, CityRepository>();
+services.AddSingleton<ILocationLogic, LocationLogic>();
 services.AddUserSecrets(config);
 
 
@@ -44,13 +50,12 @@ var app = builder.Build();
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseDeveloperExceptionPage();
 }
 
-app.UseHttpsRedirection();
+// app.UseHttpsRedirection();
 
-app.UseAuthorization();
+// app.UseAuthorization();
 
 app.MapControllers();
 

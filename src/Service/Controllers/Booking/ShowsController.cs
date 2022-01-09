@@ -1,5 +1,6 @@
 using BMS.Business.Booking;
 using BMS.Dtos.Booking;
+using BMS.Models.Booking;
 using BMS.Services.Filters;
 using BMS.Utils;
 using BMS.Utils.User;
@@ -18,7 +19,7 @@ public class ShowsController : CommonController
         _showLogic = showLogic;
     }
 
-    [HttpGet("{movieId}")]
+    [HttpGet("movies/{movieId}")]
     public async Task<ActionResult<OneOf<MovieShows, string>>> GetShows(long movieId)
     {
         if (movieId < 0)
@@ -28,8 +29,19 @@ public class ShowsController : CommonController
         return await _showLogic.GetMovieShows(movieId);
     }
 
+    [HttpGet("cities/{cityId}")]
+    public async Task<ActionResult<OneOf<CityShows, string>>> GetShowsForCity(int cityId)
+    {
+        if (cityId < 0)
+        {
+            return BadRequest(new OneOf<CityShows, string>("Invalid cityid"));
+        }
+        return await _showLogic.GetShowsForCity(cityId);
+    }
+
+    // TODO: secure this api.
     [HttpPost]
-    public async Task<ActionResult<OneOf<bool, string>>> CreateShow(CreateShowRequest request)
+    public async Task<ActionResult<OneOf<ShowDto, string>>> CreateShow(CreateShowRequest request)
     {
         if (request is null)
         {
@@ -38,15 +50,28 @@ public class ShowsController : CommonController
         var validationMessage = ValidateCreateShowRequest(request);
         if (validationMessage is not null)
         {
-            return new OneOf<bool, string>(validationMessage);
+            return new OneOf<ShowDto, string>(validationMessage);
         }
         var result = await _showLogic.CreateShow(request);
         if (result is null)
         {
             return StatusCode(500);
         }
-        return result;
+        if (result.Err is not null)
+        {
+            return new OneOf<ShowDto, string>(result.Err);
+        }
+        return new OneOf<ShowDto, string>(GetShowDto(result.Ok));
     }
+
+    private static ShowDto GetShowDto(Show show) => new ShowDto
+    {
+        Id = show.Id,
+        AudiId = show.AudiId,
+        StartTime = show.StartTime,
+        EndTime = show.EndTime,
+        MovieId = show.MovieId,
+    };
 
     private static string ValidateCreateShowRequest(CreateShowRequest request)
     {

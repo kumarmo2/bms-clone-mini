@@ -18,6 +18,7 @@ public class AuthFilter : IAuthorizationFilter
         var cookies = context.HttpContext.Request.Cookies;
 
         cookies.TryGetValue(Constants.UserAuthCookieKey, out var value);
+
         if (string.IsNullOrWhiteSpace(value))
         {
             context.Result = new StatusCodeResult(403);

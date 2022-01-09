@@ -32,9 +32,32 @@ public class ShowRepository : IShowRepository
         }
     }
 
+    public async Task<IEnumerable<MovieShowOverview>> GetMoviesOverviewForCity(int cityId, DateTime minEndTime)
+    {
+        var query = $@"select
+                        sh.id as showid,
+                        sh.movieid,
+                        ci.id as cinemaid,
+                        ci.name as cinemaname,
+                        sh.starttime,
+                        sh.endtime
+                      from booking.shows sh
+                      inner join
+                        cinema.auditoriums au on au.id = sh.audiid
+                      inner join
+                        cinema.cinemas ci on au.cinemaid = ci.id
+                      where
+                        ci.cityid = @cityid and sh.endtime > @minendtime;
+                      ";
+        using (var conn = _dbConnectionFactory.GetDbConnection())
+        {
+            return await conn.QueryAsync<MovieShowOverview>(query, new { cityid = cityId, minendtime = minEndTime });
+        }
+    }
+
     public async Task<Show> GetShowForAudiBetweenTime(int audiId, DateTime startTime, DateTime endTime)
     {
-        var query = $@"select * from booking.shows s where audiid = 1 and
+        var query = $@"select * from booking.shows s where audiid = @audiid and
                         (
                           -- when the new interval lies completely inside the existing interval
                           (starttime <= @starttime and  endtime >= @endtime)
@@ -51,7 +74,7 @@ public class ShowRepository : IShowRepository
                     ";
         using (var conn = _dbConnectionFactory.GetDbConnection())
         {
-            return await conn.QueryFirstOrDefaultAsync<Show>(query, new { starttime = startTime, endtime = endTime });
+            return await conn.QueryFirstOrDefaultAsync<Show>(query, new { audiid = audiId, starttime = startTime, endtime = endTime });
         }
     }
 

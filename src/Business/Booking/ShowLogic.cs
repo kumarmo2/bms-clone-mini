@@ -4,9 +4,11 @@ using BMS.DataAccess.Booking;
 using BMS.Dtos.Booking;
 using BMS.Models.Booking;
 using BMS.Models.Cinema;
+using mm = BMS.Models.Movie;
 using cdto = BMS.Dtos.Cinema;
 using CommonLibs.Utils;
 using CommonLibs.Utils.Id;
+using BMS.Business.Location;
 
 namespace BMS.Business.Booking;
 
@@ -16,14 +18,78 @@ public class ShowLogic : IShowLogic
     private readonly IIdFactory _idFactory;
     private readonly IMovieLogic _movieLogic;
     private readonly IShowRepository _showRepository;
+    private readonly ILocationLogic _locationLogic;
 
     public ShowLogic(ICinemaLogic cinemaLogic, IIdFactory idFactory, IMovieLogic movieLogic,
-            IShowRepository showRepository)
+            IShowRepository showRepository, ILocationLogic locationLogic)
     {
         _cinemaLogic = cinemaLogic;
         _idFactory = idFactory;
         _movieLogic = movieLogic;
         _showRepository = showRepository;
+        _locationLogic = locationLogic;
+    }
+
+    public async Task<OneOf<CityShows, string>> GetShowsForCity(int cityId)
+    {
+        if (cityId < 1)
+        {
+            throw new ArgumentException($"Invalid cityId: {cityId}");
+        }
+
+        // TODO: refactor.
+
+        var now = DateTime.UtcNow;
+
+        var cityTask = _locationLogic.GetCity(cityId);
+        var showsTask = _showRepository.GetMoviesOverviewForCity(cityId, now);
+
+        await Task.WhenAll(cityTask, showsTask);
+
+        var city = cityTask.Result;
+
+        if (city is null || city.Id < 0)
+        {
+            return new OneOf<CityShows, string>($"No city found, cityId: {cityId}");
+        }
+
+        var shows = showsTask.Result;
+        if (shows == null || !shows.Any())
+        {
+            var cityShows = new CityShows
+            {
+                CityId = cityId,
+                CityName = city.Name
+            };
+            return new OneOf<CityShows, string>(cityShows);
+        }
+
+        var result = new CityShows
+        {
+            CityId = cityId,
+            CityName = city.Name,
+            Shows = shows
+        };
+
+        var movieIds = shows.Select(show => show.MovieId);
+        var movies = await _movieLogic.GetMovies(movieIds);
+        if (movies is null || !movies.Any())
+        {
+            return new OneOf<CityShows, string>(result);
+        }
+
+        var moviesMap = movies.ToDictionary(movie => movie.Id);
+        foreach (var show in shows)
+        {
+            var movieId = show.MovieId;
+            moviesMap.TryGetValue(movieId, out var movie);
+            if (movie is null)
+            {
+                continue;
+            }
+            show.MovieName = movie.Name;
+        }
+        return new OneOf<CityShows, string>(result);
     }
 
     public async Task<OneOf<MovieShows, string>> GetMovieShows(long movieId)
@@ -44,11 +110,14 @@ public class ShowLogic : IShowLogic
             return new OneOf<MovieShows, string>("No Movie Found");
         }
 
+        Console.WriteLine($"movie: {movie.Name}");
+
         var shows = showsTask.Result;
 
         if (shows is null || !shows.Any())
         {
-            return new OneOf<MovieShows, string>(new MovieShows());
+            Console.WriteLine($"no shows found");
+            return new OneOf<MovieShows, string>(new MovieShows { MovieId = movie.Id, MovieName = movie.Name });
         }
 
         var audiIds = shows.Select(show => show.AudiId);
@@ -205,12 +274,9 @@ public class ShowLogic : IShowLogic
         return matrix;
     }
 
-    public async Task<OneOf<bool, string>> CreateShow(CreateShowRequest request)
+    private async Task<OneOf<(mm.Movie, Auditorium), string>> GetMovieAndAudi(CreateShowRequest request)
     {
-        if (request is null)
-        {
-            throw new ArgumentNullException(nameof(request));
-        }
+
         var audiTask = _cinemaLogic.GetAuditorium(request.AudiId);
         var movieTask = _movieLogic.GetMovie(request.MovieId);
 
@@ -221,26 +287,48 @@ public class ShowLogic : IShowLogic
 
         if (audi is null || audi.Id < 1)
         {
-            return new OneOf<bool, string>("No audi found with the given audi id");
+            return new OneOf<(mm.Movie, Auditorium), string>("No audi found with the given audi id");
         }
 
         if (movie is null || movie.Id < 1)
         {
-            return new OneOf<bool, string>("No movie found");
+            return new OneOf<(mm.Movie, Auditorium), string>("No movie found");
         }
+
+        if (request.StartTime < movie.ReleaseDate)
+        {
+            return new OneOf<(mm.Movie, Auditorium), string>("Cannot create show before the release date");
+        }
+
+        return new OneOf<(mm.Movie, Auditorium), string>((movie, audi));
+    }
+
+    public async Task<OneOf<Show, string>> CreateShow(CreateShowRequest request)
+    {
+        if (request is null)
+        {
+            throw new ArgumentNullException(nameof(request));
+        }
+
+        var movieAudiTuple = await GetMovieAndAudi(request);
+        if (!string.IsNullOrWhiteSpace(movieAudiTuple.Err))
+        {
+            return new OneOf<Show, string>(movieAudiTuple.Err);
+        }
+        var (movie, audi) = movieAudiTuple.Ok;
 
         // If any show already exists colliding with the new show, send error.
         var collidingShow = await _showRepository.GetShowForAudiBetweenTime(audi.Id, request.StartTime, request.EndTime);
         if (collidingShow is not null && collidingShow.Id > 0)
         {
-            return new OneOf<bool, string>($"Cannot create show as there is another scheduled between {collidingShow.StartTime} and {collidingShow.EndTime} in audi: {audi.Name} ");
+            return new OneOf<Show, string>($"Cannot create show as there is another scheduled between {collidingShow.StartTime} and {collidingShow.EndTime} in audi: {audi.Name} ");
         }
 
-        await CreateShow(request, audi);
-        return new OneOf<bool, string>(true);
+        var show = await CreateShow(request, audi);
+        return new OneOf<Show, string>(show);
     }
 
-    private async Task CreateShow(CreateShowRequest request, Auditorium audi)
+    private async Task<Show> CreateShow(CreateShowRequest request, Auditorium audi)
     {
         var show = GetShow(request);
 
@@ -254,7 +342,9 @@ public class ShowLogic : IShowLogic
         catch
         {
             // TODO: delete the show if any error occurs while creating seatAvailabilities.
+            return null;
         }
+        return show;
     }
 
     private List<ShowSeatAvailablity> GenerateShowSeatAvailablities(long showId, Auditorium audi)

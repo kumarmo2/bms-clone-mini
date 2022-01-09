@@ -3,8 +3,6 @@ using BMS.Dtos.Movie;
 using BMS.Business.Movie;
 using CommonLibs.Utils;
 using mm = BMS.Models.Movie;
-using System.Threading.Tasks;
-using System;
 
 namespace BMS.Services.Controllers.Movie;
 
@@ -16,6 +14,7 @@ public class MoviesController : CommonController
         _movieLogic = movieLogic;
     }
 
+    // TODO: secure this api.
     [HttpPost]
     public async Task<ActionResult<OneOf<MovieDto, string>>> CreateMovie(CreateMovieRequest request)
     {

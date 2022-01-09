@@ -2,8 +2,6 @@ using movieModel = BMS.Models.Movie;
 using Dapper;
 using CommonLibs.Database;
 
-
-
 namespace BMS.DataAccess.Movie;
 
 public class MovieRepository : IMovieRepository
@@ -37,6 +35,17 @@ public class MovieRepository : IMovieRepository
         using (var conn = _connectionFactory.GetDbConnection())
         {
             return await conn.QueryFirstOrDefaultAsync<movieModel.Movie>(query, new { id = id });
+        }
+    }
+
+    public async Task<IEnumerable<movieModel.Movie>> GetByIds(IEnumerable<long> ids)
+    {
+        var commaSeparatedIds = string.Join(", ", ids.ToList());
+        var query = $@"select * from movie.movies where id in ({commaSeparatedIds})";
+
+        using (var conn = _connectionFactory.GetDbConnection())
+        {
+            return await conn.QueryAsync<movieModel.Movie>(query);
         }
     }
 

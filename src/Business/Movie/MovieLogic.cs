@@ -6,7 +6,7 @@ using BMS.DataAccess.Movie;
 using CommonLibs.Utils.Id;
 
 using BMS.Dtos.Movie;
-
+using System.Collections.Generic;
 
 public class MovieLogic : IMovieLogic
 {
@@ -40,6 +40,15 @@ public class MovieLogic : IMovieLogic
     public async Task<mm.Movie> GetMovie(long id)
     {
         return await _movieRepository.GetById(id);
+    }
+
+    public async Task<IEnumerable<mm.Movie>> GetMovies(IEnumerable<long> ids)
+    {
+        if (ids == null)
+        {
+            throw new ArgumentNullException(nameof(ids));
+        }
+        return await _movieRepository.GetByIds(ids);
     }
 
     private mm.Movie GetMovieFromCreateMovieRequest(CreateMovieRequest request)

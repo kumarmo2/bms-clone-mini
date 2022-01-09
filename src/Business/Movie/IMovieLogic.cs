@@ -10,5 +10,6 @@ public interface IMovieLogic
 
     Task<OneOf<mm.Movie, string>> CreateMovie(CreateMovieRequest request);
     Task<mm.Movie> GetMovie(long id);
+    Task<IEnumerable<mm.Movie>> GetMovies(IEnumerable<long> ids);
 }
 
