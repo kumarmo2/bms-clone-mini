@@ -117,13 +117,8 @@ public class ShowLogic : IShowLogic
         return new OneOf<CityShows, string>(result);
     }
 
-    public async Task<OneOf<MovieShows, string>> GetMovieShows(long movieId)
+    private async Task<OneOf<(IEnumerable<Show>, mm.Movie), string>> GetMovieAndShows(long movieId)
     {
-        if (movieId < 1)
-        {
-            throw new ArgumentException($"Invalid {movieId}");
-        }
-
         var showsTask = _showRepository.GetAvailableShows(movieId, DateTime.UtcNow);
         var movieTask = _movieLogic.GetMovie(movieId);
 
@@ -132,20 +127,17 @@ public class ShowLogic : IShowLogic
 
         if (movie is null || movie.Id != movieId)
         {
-            return new OneOf<MovieShows, string>("No Movie Found");
+            return new OneOf<(IEnumerable<Show>, mm.Movie), string>("No Movie Found");
         }
 
         Console.WriteLine($"movie: {movie.Name}");
 
         var shows = showsTask.Result;
+        return new OneOf<(IEnumerable<Show>, mm.Movie), string>((shows, movie));
+    }
 
-        if (shows is null || !shows.Any())
-        {
-            Console.WriteLine($"no shows found");
-            return new OneOf<MovieShows, string>(new MovieShows { MovieId = movie.Id, MovieName = movie.Name });
-        }
-
-        var audiIds = shows.Select(show => show.AudiId);
+    private async Task<Dictionary<int, cdto.AudiCinema>> GetAudiIdToAudiCinemaMap(IEnumerable<int> audiIds)
+    {
         var audiCinemas = await _cinemaLogic.GetCinemasForAudis(audiIds);
 
         if (audiCinemas is null || !audiCinemas.Any())
@@ -165,8 +157,34 @@ public class ShowLogic : IShowLogic
             {
                 continue;
             }
+            Console.WriteLine($"setting audiid to ciname, audiId: {audiCinema.AudiId}, >>> {audiCinema.CinemaId}, name>>> {audiCinema.CinemaName}");
             audiIdToCinemaMap[audiCinema.AudiId] = audiCinema;
         }
+        return audiIdToCinemaMap;
+    }
+
+    public async Task<OneOf<MovieShows, string>> GetMovieShows(long movieId)
+    {
+        if (movieId < 1)
+        {
+            throw new ArgumentException($"Invalid {movieId}");
+        }
+
+        var movieShowsTuple = await GetMovieAndShows(movieId);
+        if (movieShowsTuple.Err is not null)
+        {
+            return new OneOf<MovieShows, string>(movieShowsTuple.Err);
+        }
+        var (shows, movie) = movieShowsTuple.Ok;
+
+        if (shows is null || !shows.Any())
+        {
+            Console.WriteLine($"no shows found");
+            return new OneOf<MovieShows, string>(new MovieShows { MovieId = movie.Id, MovieName = movie.Name });
+        }
+
+        var audiIds = shows.Select(show => show.AudiId);
+        var audiIdToCinemaMap = await GetAudiIdToAudiCinemaMap(audiIds);
 
         var showOverviews = shows.Select(show =>
         {
