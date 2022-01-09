@@ -37,5 +37,26 @@ public class GetShowsForCity_Tests
         Assert.NotNull(result.Err);
         Assert.Equal($"No city found, cityId: {cityId}", result.Err);
     }
+
+    [Theory, AutoDomainData]
+    public async Task No_Shows_Available_No_Shows_Returned([Frozen] Mock<ILocationLogic> locationLogicStub,
+            [Frozen] Mock<IShowRepository> showRepositoryStub, City city, BMS.Business.Booking.ShowLogic sut)
+    {
+
+        locationLogicStub.Setup(ll => ll.GetCity(It.IsAny<int>())).ReturnsAsync(city);
+        IEnumerable<MovieShowOverview> shows = null;
+        showRepositoryStub.Setup(sr => sr.GetMoviesOverviewForCity(It.IsAny<int>(), It.IsAny<DateTime>())).ReturnsAsync(shows);
+        var cityId = city.Id;
+        var result = await sut.GetShowsForCity(cityId);
+
+        Assert.NotNull(result);
+        Assert.NotNull(result.Ok);
+        var cityShows = result.Ok;
+        Assert.Equal(city.Id, cityShows.CityId);
+        Assert.Equal(city.Name, cityShows.CityName);
+
+    }
+
+    // TODO: Complete more unit tests for this method.
 }
 
