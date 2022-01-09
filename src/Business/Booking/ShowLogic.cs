@@ -9,6 +9,7 @@ using cdto = BMS.Dtos.Cinema;
 using CommonLibs.Utils;
 using CommonLibs.Utils.Id;
 using BMS.Business.Location;
+using BMS.Models.Location;
 
 namespace BMS.Business.Booking;
 
@@ -30,15 +31,8 @@ public class ShowLogic : IShowLogic
         _locationLogic = locationLogic;
     }
 
-    public async Task<OneOf<CityShows, string>> GetShowsForCity(int cityId)
+    private async Task<OneOf<(City, IEnumerable<MovieShowOverview>), string>> GetCityAndMovieOverviews(int cityId)
     {
-        if (cityId < 1)
-        {
-            throw new ArgumentException($"Invalid cityId: {cityId}");
-        }
-
-        // TODO: refactor.
-
         var now = DateTime.UtcNow;
 
         var cityTask = _locationLogic.GetCity(cityId);
@@ -50,32 +44,20 @@ public class ShowLogic : IShowLogic
 
         if (city is null || city.Id < 0)
         {
-            return new OneOf<CityShows, string>($"No city found, cityId: {cityId}");
+            return new OneOf<(City, IEnumerable<MovieShowOverview>), string>($"No city found, cityId: {cityId}");
         }
 
         var shows = showsTask.Result;
-        if (shows == null || !shows.Any())
-        {
-            var cityShows = new CityShows
-            {
-                CityId = cityId,
-                CityName = city.Name
-            };
-            return new OneOf<CityShows, string>(cityShows);
-        }
+        return new OneOf<(City, IEnumerable<MovieShowOverview>), string>((city, shows));
+    }
 
-        var result = new CityShows
-        {
-            CityId = cityId,
-            CityName = city.Name,
-            Shows = shows
-        };
-
+    private async Task PopulateMovieNames(IEnumerable<MovieShowOverview> shows)
+    {
         var movieIds = shows.Select(show => show.MovieId);
         var movies = await _movieLogic.GetMovies(movieIds);
         if (movies is null || !movies.Any())
         {
-            return new OneOf<CityShows, string>(result);
+            return;
         }
 
         var moviesMap = movies.ToDictionary(movie => movie.Id);
@@ -89,6 +71,49 @@ public class ShowLogic : IShowLogic
             }
             show.MovieName = movie.Name;
         }
+
+    }
+
+    private async Task<CityShows> GetCityShows(int cityId, City city, IEnumerable<MovieShowOverview> shows)
+    {
+        var result = new CityShows
+        {
+            CityId = cityId,
+            CityName = city.Name,
+            Shows = shows
+        };
+
+        await PopulateMovieNames(shows);
+
+        return result;
+    }
+
+    public async Task<OneOf<CityShows, string>> GetShowsForCity(int cityId)
+    {
+        if (cityId < 1)
+        {
+            throw new ArgumentException($"Invalid cityId: {cityId}");
+        }
+
+        var cityShowsTuple = await GetCityAndMovieOverviews(cityId);
+        if (cityShowsTuple.Err is not null)
+        {
+            return new OneOf<CityShows, string>(cityShowsTuple.Err);
+        }
+
+        var (city, shows) = cityShowsTuple.Ok;
+
+        if (shows == null || !shows.Any())
+        {
+            var cityShows = new CityShows
+            {
+                CityId = cityId,
+                CityName = city.Name
+            };
+            return new OneOf<CityShows, string>(cityShows);
+        }
+
+        var result = await GetCityShows(cityId, city, shows);
         return new OneOf<CityShows, string>(result);
     }
 
