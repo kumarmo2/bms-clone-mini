@@ -1,3 +1,5 @@
+import { BACKEND_BASE_URL } from "../../../constants";
+
 export const fetchShowsForCity = (cityId) => {
-  return fetch(`http://localhost:6000/api/shows/cities/${cityId}`);
+  return fetch(`${BACKEND_BASE_URL}/api/shows/cities/${cityId}`);
 };

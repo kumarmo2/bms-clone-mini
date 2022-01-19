@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { fetchShowsForCity } from "./apis";
+import { Outlet } from "react-router-dom";
 
 const Shows = ({ cityId }) => {
   const [shows, setShows] = useState([]);
@@ -53,6 +54,7 @@ const Shows = ({ cityId }) => {
           </div>
         );
       })}
+      <Outlet />
     </div>
   );
 };
